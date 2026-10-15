@@ -17,18 +17,6 @@ export function LoginPage() {
     );
   }
 
-  if (user && (user.role === 'FACULTY' || user.role === 'STUDENT') && !user.mustChangePassword) {
-    return (
-      <main className="login-screen">
-        <section className="card login-card">
-          <p className="eyebrow">Campus</p>
-          <h1>Dashboard unavailable</h1>
-          <p className="muted">Faculty and student dashboards are not part of this build.</p>
-        </section>
-      </main>
-    );
-  }
-
   if (user) {
     return <Navigate to={homePath(user)} replace />;
   }

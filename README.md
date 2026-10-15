@@ -1,6 +1,6 @@
 # Campus AI Assistant
 
-This document lists the academic tables used by the admin setup: calendar, organisation, people, enrolment, and class teaching assignments.
+This document lists the academic tables used by the admin setup, the faculty course-materials screen, and the student chat. The admin tables cover the calendar, organisation, people, enrolment, and class teaching assignments. The faculty screen adds uploaded PDFs and their chunks. The student chat adds threads and messages.
 
 Every foreign key is a `BIGINT` that references the parent table's `id`. Updates cascade. Deletes are restricted, so a parent row cannot be removed while child rows still point at it.
 
@@ -13,8 +13,11 @@ Every foreign key is a `BIGINT` that references the parent table's `id`. Updates
 - A faculty member and a student each have one login in `users`.
 - A student enrolment places a student in a class for a span of academic years.
 - A class curriculum assignment gives one class one curriculum for one term. Each course in that assignment is a class course offering, and an offering can name the faculty member who teaches it.
-- A faculty course assignment records that a faculty member is eligible to teach a course during a term.
+- A faculty course assignment records that a faculty member is eligible to teach a course during a term. That eligibility is what lets them upload a PDF on the faculty screen.
 - A first-year cycle allocation records whether a first-year class starts the year on the P cycle or the C cycle.
+- A course document is one PDF uploaded for a course and term. Its text is split into course document chunks, and each chunk stores an embedding.
+- An assistant chat is one student's thread about one course in one term. Each question and each answer is an assistant message. An answer can record the document and page it used.
+- A student's course list comes from their active enrolment, that class's curriculum assignment for the term, and the offerings under it. A faculty member's course list comes from active faculty course assignments for the term.
 
 ## users
 
@@ -66,7 +69,7 @@ One odd or even term inside an academic year. A year has at most one term of eac
 
 Unique: `(academic_year_id, period_type)`.
 
-Relations: belongs to one academic year. Referenced by faculty course assignments, class curriculum assignments, and the teaching records built from those assignments.
+Relations: belongs to one academic year. Referenced by faculty course assignments, class curriculum assignments, course documents, assistant chats, and the teaching records built from those assignments.
 
 Odd terms map to semesters 1, 3, 5, and so on. Even terms map to semesters 2, 4, 6, and so on.
 
@@ -138,7 +141,7 @@ A subject that can be placed on a curriculum and taught to a class.
 | created_at | DATETIME | yes | |
 | updated_at | DATETIME | yes | |
 
-Relations: belongs to one department when `department_id` is set. Linked to curricula through `curriculum_courses`, to faculty through `faculty_course_assignments`, and to a class term through `class_course_offerings`.
+Relations: belongs to one department when `department_id` is set. Linked to curricula through `curriculum_courses`, to faculty through `faculty_course_assignments`, to a class term through `class_course_offerings`, to uploaded PDFs through `course_documents`, and to student threads through `assistant_chats`.
 
 ## curricula
 
@@ -190,7 +193,7 @@ Profile for a faculty member. The login lives in `users`; this row holds the cam
 | created_at | DATETIME | yes | |
 | updated_at | DATETIME | yes | |
 
-Relations: belongs to one user. Belongs to either one branch or one department. Can have many `faculty_course_assignments` and can be named on many `class_course_offerings`.
+Relations: belongs to one user. Belongs to either one branch or one department. Can have many `faculty_course_assignments`, can be named on many `class_course_offerings`, and can upload many `course_documents`.
 
 ## students
 
@@ -208,7 +211,7 @@ Profile for a student. The login lives in `users`; this row holds the campus ide
 | created_at | DATETIME | yes | |
 | updated_at | DATETIME | yes | |
 
-Relations: belongs to one user and one branch. Has many `student_class_enrolments`.
+Relations: belongs to one user and one branch. Has many `student_class_enrolments` and many `assistant_chats`.
 
 ## student_class_enrolments
 
@@ -302,4 +305,88 @@ Unique: `(class_curriculum_assignment_id, course_id)`.
 
 Index: `assigned_faculty_id`.
 
-Relations: belongs to one class curriculum assignment and one course. Optionally belongs to the faculty member assigned to that offering.
+Relations: belongs to one class curriculum assignment and one course. Optionally belongs to the faculty member assigned to that offering. The student chat builds its course list from the offerings on the student's class for the current term.
+
+## course_documents
+
+A PDF uploaded from the faculty course-materials screen for one course and one term. The same file hash for that course and term is stored only once. The screen lists the title, status, page count, and chunk count from this table.
+
+| Column | Type | Required | Notes |
+| --- | --- | --- | --- |
+| id | BIGINT | yes | Primary key |
+| course_id | BIGINT | yes | Foreign key to `courses` |
+| academic_term_id | BIGINT | yes | Foreign key to `academic_terms` |
+| uploaded_by_faculty_id | BIGINT | yes | Foreign key to `faculty` |
+| title | VARCHAR(200) | yes | Title entered on the faculty screen |
+| original_filename | VARCHAR(255) | yes | Sanitized upload name |
+| mime_type | VARCHAR(100) | yes | `application/pdf` |
+| byte_size | INTEGER | yes | |
+| page_count | INTEGER | no | Filled after the PDF is read |
+| content_sha256 | CHAR(64) | yes | Hash of the file bytes |
+| storage_path | VARCHAR(500) | yes | Where the PDF bytes are stored on disk |
+| status | ENUM('PENDING', 'PROCESSING', 'READY', 'FAILED') | yes | |
+| error_message | VARCHAR(500) | no | Set when status is `FAILED` |
+| embedding_model | VARCHAR(100) | yes | Model that embedded the chunks |
+| embedding_dimensions | SMALLINT | yes | `768` |
+| chunk_count | INTEGER | yes | Defaults to 0 |
+| created_at | DATETIME | yes | |
+| updated_at | DATETIME | yes | |
+
+Unique: `(course_id, academic_term_id, content_sha256)`.
+
+Index: `(course_id, academic_term_id, status)`.
+
+Relations: belongs to one course, one academic term, and the faculty member who uploaded it. Has many `course_document_chunks`. Upload is allowed only when that faculty member has an `ACTIVE` `faculty_course_assignments` row for the same course and term.
+
+## course_document_chunks
+
+One slice of a course document, with the text used for an answer and the embedding used to find it. Chunks are not listed on the faculty screen. A student answer cites `page_number` from the chunks it used.
+
+| Column | Type | Required | Notes |
+| --- | --- | --- | --- |
+| id | BIGINT | yes | Primary key |
+| document_id | BIGINT | yes | Foreign key to `course_documents` |
+| chunk_index | INTEGER | yes | Order of this slice inside the document |
+| page_number | INTEGER | no | Page the slice was taken from |
+| content | TEXT | yes | Excerpt sent to the answer model |
+| embedding | JSON | yes | L2-normalized vector |
+| created_at | DATETIME | yes | |
+
+Unique: `(document_id, chunk_index)`.
+
+Relations: belongs to one course document. Reprocessing a document deletes its chunks and inserts the replacement set together. There is no `updated_at`.
+
+## assistant_chats
+
+One student thread on the chat screen. The thread is locked to a single course and term. The left column lists that student's chats, newest first, using the course name and this title. Opening another student's chat returns not found.
+
+| Column | Type | Required | Notes |
+| --- | --- | --- | --- |
+| id | BIGINT | yes | Primary key |
+| student_id | BIGINT | yes | Foreign key to `students` |
+| course_id | BIGINT | yes | Foreign key to `courses`. Fixed when the thread is created |
+| academic_term_id | BIGINT | yes | Foreign key to `academic_terms` |
+| title | VARCHAR(120) | yes | First question, trimmed to one short line |
+| created_at | DATETIME | yes | |
+| updated_at | DATETIME | yes | |
+
+Index: `(student_id, updated_at)`.
+
+Relations: belongs to one student, one course, and one academic term. Has many `assistant_messages`. The course must be one the student can take: their `ACTIVE` `student_class_enrolments` row, that class's `class_curriculum_assignments` row for the term, and a `class_course_offerings` row under it.
+
+## assistant_messages
+
+One line in a student thread. A send stores the question and the answer in the same transaction. Earlier messages stay on screen and are not sent back to the model with the next question.
+
+| Column | Type | Required | Notes |
+| --- | --- | --- | --- |
+| id | BIGINT | yes | Primary key |
+| chat_id | BIGINT | yes | Foreign key to `assistant_chats` |
+| role | ENUM('USER', 'ASSISTANT') | yes | `USER` is the question. `ASSISTANT` is the answer |
+| content | TEXT | yes | Question text or answer text |
+| sources | JSON | no | On an assistant row, `[{ documentId, title, pageNumber }]`. Empty when the materials did not contain an answer |
+| created_at | DATETIME | yes | |
+
+Index: `(chat_id, id)`.
+
+Relations: belongs to one assistant chat. `sources.documentId` refers to a `course_documents` row, and `pageNumber` comes from the matching `course_document_chunks` row. There is no `updated_at`.

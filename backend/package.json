@@ -7,9 +7,9 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "tsx --test tests/**/*.test.ts",
-    "db:migrate": "NODE_OPTIONS='--require tsx/cjs' sequelize-cli db:migrate",
-    "db:migrate:undo": "NODE_OPTIONS='--require tsx/cjs' sequelize-cli db:migrate:undo",
-    "db:seed": "NODE_OPTIONS='--require tsx/cjs' sequelize-cli db:seed:all"
+    "db:migrate": "node --require tsx/cjs ./node_modules/sequelize-cli/lib/sequelize db:migrate",
+    "db:migrate:undo": "node --require tsx/cjs ./node_modules/sequelize-cli/lib/sequelize db:migrate:undo",
+    "db:seed": "node --require tsx/cjs ./node_modules/sequelize-cli/lib/sequelize db:seed:all"
   },
   "dependencies": {
     "@google/genai": "^2.29.1",

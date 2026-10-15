@@ -36,48 +36,48 @@ if (jwtSecret.length < 16) {
   throw new Error('JWT_SECRET must be at least 16 characters');
 }
 
-// function readBoundedInt(name: string, fallback: number, min: number, max: number): number {
-//   const raw = process.env[name];
-//   if (!raw || raw.trim() === '') {
-//     return fallback;
-//   }
-//   const value = Number(raw);
-//   if (!Number.isInteger(value) || value < min || value > max) {
-//     throw new Error(`${name} must be an integer from ${min} to ${max}`);
-//   }
-//   return value;
-// }
-//
-// function readSimilarity(): number {
-//   const raw = process.env.RAG_MIN_SIMILARITY;
-//   if (!raw || raw.trim() === '') {
-//     return 0.55;
-//   }
-//   const value = Number(raw);
-//   if (!Number.isFinite(value) || value < 0 || value > 1) {
-//     throw new Error('RAG_MIN_SIMILARITY must be a number from 0 to 1');
-//   }
-//   return value;
-// }
-//
-// function readRagConfig() {
-//   const chunkChars = readBoundedInt('RAG_CHUNK_CHARS', 1000, 200, 4000);
-//   const chunkOverlap = readBoundedInt('RAG_CHUNK_OVERLAP', 150, 0, 1000);
-//   if (chunkOverlap >= chunkChars) {
-//     throw new Error('RAG_CHUNK_OVERLAP must be smaller than RAG_CHUNK_CHARS');
-//   }
-//   return {
-//     embeddingModel: process.env.GEMINI_EMBEDDING_MODEL?.trim() || 'gemini-embedding-001',
-//     embeddingDimensions: readBoundedInt('GEMINI_EMBEDDING_DIMENSIONS', 768, 128, 3072),
-//     generationModel: process.env.GEMINI_GENERATION_MODEL?.trim() || 'gemini-3.5-flash-lite',
-//     topK: readBoundedInt('RAG_TOP_K', 5, 1, 20),
-//     minSimilarity: readSimilarity(),
-//     maxPdfBytes: readBoundedInt('RAG_MAX_PDF_BYTES', 8 * 1024 * 1024, 1024, 20 * 1024 * 1024),
-//     maxPdfPages: readBoundedInt('RAG_MAX_PDF_PAGES', 40, 1, 200),
-//     chunkChars,
-//     chunkOverlap,
-//   };
-// }
+function readBoundedInt(name: string, fallback: number, min: number, max: number): number {
+  const raw = process.env[name];
+  if (!raw || raw.trim() === '') {
+    return fallback;
+  }
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < min || value > max) {
+    throw new Error(`${name} must be an integer from ${min} to ${max}`);
+  }
+  return value;
+}
+
+function readSimilarity(): number {
+  const raw = process.env.RAG_MIN_SIMILARITY;
+  if (!raw || raw.trim() === '') {
+    return 0.55;
+  }
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 0 || value > 1) {
+    throw new Error('RAG_MIN_SIMILARITY must be a number from 0 to 1');
+  }
+  return value;
+}
+
+function readRagConfig() {
+  const chunkChars = readBoundedInt('RAG_CHUNK_CHARS', 1000, 200, 4000);
+  const chunkOverlap = readBoundedInt('RAG_CHUNK_OVERLAP', 150, 0, 1000);
+  if (chunkOverlap >= chunkChars) {
+    throw new Error('RAG_CHUNK_OVERLAP must be smaller than RAG_CHUNK_CHARS');
+  }
+  return {
+    embeddingModel: process.env.GEMINI_EMBEDDING_MODEL?.trim() || 'gemini-embedding-001',
+    embeddingDimensions: readBoundedInt('GEMINI_EMBEDDING_DIMENSIONS', 768, 128, 3072),
+    generationModel: process.env.GEMINI_GENERATION_MODEL?.trim() || 'gemini-3.5-flash-lite',
+    topK: readBoundedInt('RAG_TOP_K', 5, 1, 20),
+    minSimilarity: readSimilarity(),
+    maxPdfBytes: readBoundedInt('RAG_MAX_PDF_BYTES', 8 * 1024 * 1024, 1024, 20 * 1024 * 1024),
+    maxPdfPages: readBoundedInt('RAG_MAX_PDF_PAGES', 40, 1, 200),
+    chunkChars,
+    chunkOverlap,
+  };
+}
 
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
@@ -94,6 +94,6 @@ export const env = {
   corsOrigin: process.env.CORS_ORIGIN?.trim() || 'http://localhost:5173',
   bcryptRounds: readRounds(),
   appTimezone: process.env.APP_TIMEZONE?.trim() || 'Asia/Kolkata',
-  // geminiApiKey: process.env.GEMINI_API_KEY?.trim() || '',
-  // rag: readRagConfig(),
+  geminiApiKey: process.env.GEMINI_API_KEY?.trim() || '',
+  rag: readRagConfig(),
 };

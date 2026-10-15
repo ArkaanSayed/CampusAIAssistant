@@ -6,12 +6,12 @@ import { AcademicYearListPage } from '../features/academic-years/pages/AcademicY
 import { AssignmentDetailPage } from '../features/assignments/AssignmentDetailPage';
 import { AssignmentListPage } from '../features/assignments/AssignmentListPage';
 import { RequireAdmin } from '../features/auth/RequireAdmin';
+import { RequireFaculty } from '../features/auth/RequireFaculty';
 import { RequirePasswordChange } from '../features/auth/RequirePasswordChange';
-// import { RequireFaculty } from '../features/auth/RequireFaculty';
-// import { RequireStudent } from '../features/auth/RequireStudent';
-// import { RoleLayout } from '../components/layout/RoleLayout';
-// import { FacultyHomePage } from '../features/teaching/FacultyHomePage';
-// import { AssistantPage } from '../features/assistant/AssistantPage';
+import { RequireStudent } from '../features/auth/RequireStudent';
+import { RoleLayout } from '../components/layout/RoleLayout';
+import { FacultyHomePage } from '../features/teaching/FacultyHomePage';
+import { AssistantPage } from '../features/assistant/AssistantPage';
 import { ChangePasswordPage } from '../features/auth/pages/ChangePasswordPage';
 import { LoginPage } from '../features/auth/pages/LoginPage';
 import { BranchDetailPage, BranchFormPage, BranchListPage } from '../features/branches/BranchPages';
@@ -31,18 +31,14 @@ export function AppRouter() {
         <Route element={<RequirePasswordChange />}>
           <Route path="/account/password" element={<ChangePasswordPage />} />
         </Route>
-        {/* Faculty dashboard
         <Route element={<RequireFaculty />}>
           <Route element={<RoleLayout title="Campus Teaching" />}>
             <Route path="/teach" element={<FacultyHomePage />} />
           </Route>
         </Route>
-        */}
-        {/* Student dashboard
         <Route element={<RequireStudent />}>
           <Route path="/assistant" element={<AssistantPage />} />
         </Route>
-        */}
         <Route element={<RequireAdmin />}>
           <Route element={<AdminLayout />}>
             <Route path="/" element={<DashboardPage />} />
